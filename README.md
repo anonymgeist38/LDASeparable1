@@ -32,8 +32,22 @@ A typical training set representing grey-value images of size m x n and training
 ![Tensor Projector](images/Visualizing_tensor_projection_9.jpg) (Visualizing Tensor projector)
 
 
+## Build and Run Instructions
 
+1. Install OpenCV and Boost if needed.
+   - On macOS with Homebrew:
+     - `brew install opencv boost`
 
+2. Compile the source from the repository root:
+   - `cd /Users/friedrichhahn/LDASeparable1`
+   - `g++ -std=c++11 -I/opt/homebrew/opt/boost/include src/main.cpp -o lda_run $(pkg-config --cflags --libs opencv4)`
+
+3. Run the compiled executable with the training and test data:
+   - `./lda_run images/uiucTrain/ images/uiucTest/ images/uiucTestResults/ 9 images/visualizeW_RHO_9.PGM`
+
+4. Check results in `images/uiucTestResults/`.
+
+5. If the project is rebuilt in a different environment, adjust the OpenCV include and library flags as required.
 
 
 

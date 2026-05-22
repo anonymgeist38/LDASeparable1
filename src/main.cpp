@@ -53,7 +53,7 @@ void computeOnTestImages(Mat visual, string& path, string& testFileResultsPath,
 	normalize(visual, visual, 0, 255, NORM_MINMAX, CV_8UC1);
 
 	vector<int> compressionParams;
-	compressionParams.push_back(CV_IMWRITE_JPEG_QUALITY);
+	compressionParams.push_back(cv::IMWRITE_JPEG_QUALITY);
 	compressionParams.push_back(95);
 
 /*
@@ -84,18 +84,26 @@ void computeOnTestImages(Mat visual, string& path, string& testFileResultsPath,
 	for (int i = 0; i < 170; i++) {
 
 		img = imread(format("%s%d.PGM", (path).c_str(), i),
-				CV_LOAD_IMAGE_GRAYSCALE);
+				cv::IMREAD_GRAYSCALE);
+		if (img.empty()) {
+			cerr << "Skipping missing or unreadable image: " << format("%s%d.PGM", (path).c_str(), i) << endl;
+			continue;
+		}
 
 		img.convertTo(img, CV_32FC1);
 
 		int result_cols = img.cols - templ.cols + 1;
-
 		int result_rows = img.rows - templ.rows + 1;
+		if (result_cols <= 0 || result_rows <= 0) {
+			cerr << "Skipping image with invalid result size: " << format("%s%d.PGM", (path).c_str(), i)
+			     << " img=" << img.cols << "x" << img.rows
+			     << " templ=" << templ.cols << "x" << templ.rows << endl;
+			continue;
+		}
 
 		result.create(result_rows, result_cols, CV_32FC1); //CV_32FC1
 
-
-		matchTemplate(img, templ, result, CV_TM_CCOEFF);
+		matchTemplate(img, templ, result, cv::TM_CCOEFF);
 //		normalize( result, result, 0, 1, NORM_MINMAX, -1, Mat() );
 
 		//MatchTemplate returns a similarity map and not a location.s
@@ -107,6 +115,12 @@ void computeOnTestImages(Mat visual, string& path, string& testFileResultsPath,
 
 			minMaxLoc(result, &minVal, &maxVal, &minLoc, &maxLoc, general_mask); //general_mask
 
+			if (minLoc.x < 0 || minLoc.y < 0 || minLoc.x >= result.cols || minLoc.y >= result.rows ||
+			    maxLoc.x < 0 || maxLoc.y < 0 || maxLoc.x >= result.cols || maxLoc.y >= result.rows) {
+				cerr << "Invalid match location for image " << format("%s%d.PGM", (path).c_str(), i)
+				     << " minLoc=" << minLoc << " maxLoc=" << maxLoc << " result=" << result_rows << "x" << result_cols << endl;
+				continue;
+			}
 
 			//just to visually observe centering I stay this part of code:
 
@@ -151,7 +165,7 @@ void computeOnTestImages(Mat visual, string& path, string& testFileResultsPath,
 
 
 			Mat img_display = img.clone();
-			cvtColor(img_display, img_display, CV_GRAY2BGR);
+			cvtColor(img_display, img_display, cv::COLOR_GRAY2BGR);
 
 			rectangle(img_display, matchLoc,
 					Point(matchLoc.x + templ.cols, matchLoc.y + templ.rows),
@@ -331,7 +345,7 @@ Mat getMean(vector<Data> &training)
 
 Mat LoadImage(string path)
 {
-	Mat image = imread(path.c_str(), CV_LOAD_IMAGE_GRAYSCALE);
+	Mat image = imread(path.c_str(), cv::IMREAD_GRAYSCALE);
 	image.convertTo(image, CV_32FC1);
 	return image;
 }
@@ -369,7 +383,7 @@ vector<Data> loadTrainingData(string path)
 void Visualize(Mat matrix, string window)
 {
 	vector<int> compressionParams;
-	compressionParams.push_back(CV_IMWRITE_JPEG_QUALITY);
+	compressionParams.push_back(cv::IMWRITE_JPEG_QUALITY);
 	compressionParams.push_back(95);
 	int rho = 9;
 

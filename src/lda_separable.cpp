@@ -7,7 +7,6 @@
 
 #include "opencv2/opencv.hpp"
 #include "opencv2/core/core.hpp"
-#include "opencv2/core/parallel.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 
@@ -145,7 +144,7 @@ vector<Data> loadTrainingData(const string& path) {
 }
 
 Mat loadImage(const string& path) {
-    Mat image = imread(path.c_str(), CV_LOAD_IMAGE_GRAYSCALE);
+    Mat image = imread(path.c_str(), cv::IMREAD_GRAYSCALE);
     image.convertTo(image, CV_32FC1);
     return image;
 }
@@ -198,7 +197,7 @@ void computeOnTestImages(const Mat& visual,
     normalize(visual, normalizedVisual, 0, 255, NORM_MINMAX, CV_8UC1);
 
     vector<int> compressionParams;
-    compressionParams.push_back(CV_IMWRITE_JPEG_QUALITY);
+    compressionParams.push_back(IMWRITE_JPEG_QUALITY);
     compressionParams.push_back(95);
 
     Mat templ = normalizedVisual;
@@ -207,19 +206,42 @@ void computeOnTestImages(const Mat& visual,
     string prefix = "search";
     const int numTestImages = 170;
 
-    parallel_for_(Range(0, numTestImages), [&](const Range& range) {
-        for (int i = range.start; i < range.end; ++i) {
-        Mat img = imread(format("%s%d.PGM", path.c_str(), i), CV_LOAD_IMAGE_GRAYSCALE);
+    for (int i = 0; i < numTestImages; ++i) {
+        Mat img = imread(format("%s%d.PGM", path.c_str(), i), cv::IMREAD_GRAYSCALE);
+        if (img.empty()) {
+            cerr << "Skipping missing or unreadable image: " << format("%s%d.PGM", path.c_str(), i) << endl;
+            continue;
+        }
         img.convertTo(img, CV_32FC1);
+
         int result_cols = img.cols - templ.cols + 1;
         int result_rows = img.rows - templ.rows + 1;
+        if (result_cols <= 0 || result_rows <= 0) {
+            cerr << "Skipping image with invalid result size: " << format("%s%d.PGM", path.c_str(), i)
+                 << " img=" << img.cols << "x" << img.rows
+                 << " templ=" << templ.cols << "x" << templ.rows << endl;
+            continue;
+        }
+
         Mat result;
         result.create(result_rows, result_cols, CV_32FC1);
-        matchTemplate(img, templ, result, CV_TM_CCOEFF);
+        matchTemplate(img, templ, result, cv::TM_CCOEFF);
+
+        double minVal;
+        double maxVal;
+        Point minLoc;
+        Point maxLoc;
+        Point matchLoc;
 
         Mat general_mask = Mat::ones(result.rows, result.cols, CV_8UC1);
         for (int k = 0; k < 5; k++) {
             minMaxLoc(result, &minVal, &maxVal, &minLoc, &maxLoc, general_mask);
+            if (minLoc.x < 0 || minLoc.y < 0 || minLoc.x >= result.cols || minLoc.y >= result.rows ||
+                maxLoc.x < 0 || maxLoc.y < 0 || maxLoc.x >= result.cols || maxLoc.y >= result.rows) {
+                cerr << "Invalid match location for image " << format("%s%d.PGM", path.c_str(), i)
+                     << " minLoc=" << minLoc << " maxLoc=" << maxLoc << " result=" << result_rows << "x" << result_cols << endl;
+                break;
+            }
             result.at<float>(minLoc) = 1.0f;
             result.at<float>(maxLoc) = 0.0f;
             matchLoc = maxLoc;
@@ -237,7 +259,7 @@ void computeOnTestImages(const Mat& visual,
             template_mask.copyTo(general_mask(Rect(x, y, template_w, template_h)));
 
             Mat img_display = img.clone();
-            cvtColor(img_display, img_display, CV_GRAY2BGR);
+            cvtColor(img_display, img_display, cv::COLOR_GRAY2BGR);
             rectangle(img_display, matchLoc,
                       Point(matchLoc.x + templ.cols, matchLoc.y + templ.rows),
                       Scalar(0, 255, 0), 2, 8, 0);
@@ -251,7 +273,7 @@ void computeOnTestImages(const Mat& visual,
 
 void Visualize(const Mat& matrix, const string& window) {
     vector<int> compressionParams;
-    compressionParams.push_back(CV_IMWRITE_JPEG_QUALITY);
+    compressionParams.push_back(IMWRITE_JPEG_QUALITY);
     compressionParams.push_back(95);
     int rho = 9;
 

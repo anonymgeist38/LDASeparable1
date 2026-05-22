@@ -34,20 +34,57 @@ A typical training set representing grey-value images of size m x n and training
 
 ## Build and Run Instructions
 
-1. Install OpenCV and Boost if needed.
-   - On macOS with Homebrew:
-     - `brew install opencv boost`
+### 1. Install dependencies
 
-2. Compile the source from the repository root:
-   - `cd /Users/friedrichhahn/LDASeparable1`
-   - `g++ -std=c++11 -I/opt/homebrew/opt/boost/include src/main.cpp -o lda_run $(pkg-config --cflags --libs opencv4)`
+- On macOS with Homebrew:
+  - `brew install opencv boost`
 
-3. Run the compiled executable with the training and test data:
-   - `./lda_run images/uiucTrain/ images/uiucTest/ images/uiucTestResults/ 9 images/visualizeW_RHO_9.PGM`
+### 2. Build with CMake
 
-4. Check results in `images/uiucTestResults/`.
+From the repository root:
 
-5. If the project is rebuilt in a different environment, adjust the OpenCV include and library flags as required.
+```bash
+mkdir -p build
+cd build
+cmake ..
+cmake --build .
+```
+
+This produces the executable `lda_run` in the `build/` directory.
+
+Alternatively, use an out-of-source build from the repo root:
+
+```bash
+cmake -S . -B build
+cmake --build build --target lda_run
+```
+
+### 3. Run the executable
+
+From `build/`:
+
+```bash
+./lda_run ../images/uiucTrain/ ../images/uiucTest/ ../images/uiucTestResults/ 9 ../images/visualizeW_RHO_9.PGM
+```
+
+### 4. Run tests
+
+From `build/`:
+
+```bash
+cmake --build . --target lda_tests
+ctest --output-on-failure
+```
+
+### 5. Verify output
+
+- Check generated result images in `images/uiucTestResults/`.
+
+### 6. Notes
+
+- The repository includes a root `CMakeLists.txt` for easy builds.
+- If your environment differs, adjust OpenCV/Boost paths or use CMake cache variables.
+- Local runtime artifacts such as `lda_run` and `file.txt` are ignored via `.gitignore`.
 
 
 

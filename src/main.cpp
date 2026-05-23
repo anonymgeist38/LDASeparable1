@@ -25,6 +25,7 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/core/mat.hpp"
+#include "video_processor.h"
 
 #include <boost/iostreams/device/file.hpp>
 #include <boost/iostreams/stream.hpp>
@@ -398,6 +399,66 @@ void Visualize(Mat matrix, string window)
 	waitKey(0);
 }
 
+// Helper function to detect if input is a video file
+bool isVideoFile(const string& path) {
+	string ext_lower = path;
+	transform(ext_lower.begin(), ext_lower.end(), ext_lower.begin(), ::tolower);
+	vector<string> video_exts = {".mp4", ".avi", ".mov", ".mkv", ".flv", ".wmv", ".m4v", ".webm"};
+	for (const auto& ext : video_exts) {
+		if (ext_lower.length() >= ext.length() &&
+		    ext_lower.substr(ext_lower.length() - ext.length()) == ext) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// Process a video file frame-by-frame using LDA template
+void processVideoWithTemplate(const string& videoPath, const Mat& templ, const string& outputPath) {
+	VideoCapture cap;
+	int frameCount;
+	double fps;
+	
+	if (!openVideo(videoPath, cap, frameCount, fps)) {
+		cerr << "Failed to open video: " << videoPath << endl;
+		return;
+	}
+
+	vector<DetectionFrame> frames;
+	Mat frame;
+	int frameId = 0;
+
+	cout << "Processing video frames..." << endl;
+
+	while (cap.read(frame)) {
+		if (frame.empty()) break;
+
+		// process frame with LDA template matching
+		vector<Rect> dets = processFrameWithTemplate(frame, templ, 0.7f);
+		
+		DetectionFrame df;
+		df.frameId = frameId;
+		df.image = frame.clone();
+		df.detections = dets;
+		frames.push_back(df);
+
+		frameId++;
+		if (frameId % 30 == 0) {
+			cout << "Processed " << frameId << " frames..." << endl;
+		}
+	}
+
+	cap.release();
+	cout << "Total frames processed: " << frameId << endl;
+
+	// write annotated video
+	if (!frames.empty()) {
+		int fourcc = VideoWriter::fourcc('m', 'p', '4', 'v');
+		writeVideoWithDetections(outputPath, frames, fourcc, fps, 
+		                          frames[0].image.cols, frames[0].image.rows);
+	}
+}
+
 int main(int argc, char** argv) {
 
 
@@ -470,7 +531,15 @@ int main(int argc, char** argv) {
 
 	string visualizeW = argv[5];
 
-	computeOnTestImages(temp, testFilesPath, testFileResultsPath, visualizeW, rho); //for rho = 9
+	// Check if test input is a video file
+	if (isVideoFile(argv[2])) {
+		cout << "Detected video input: " << argv[2] << endl;
+		string videoOutputPath = string(argv[3]) + "output_video.mp4";
+		processVideoWithTemplate(argv[2], temp, videoOutputPath);
+	} else {
+		// Process image sequence as before
+		computeOnTestImages(temp, testFilesPath, testFileResultsPath, visualizeW, rho); //for rho = 9
+	}
 
 	waitKey(0);
 

@@ -61,11 +61,29 @@ cmake --build build --target lda_run
 
 ### 3. Run the executable
 
+#### Image-based processing (Default)
+
 From `build/`:
 
 ```bash
 ./lda_run ../images/uiucTrain/ ../images/uiucTest/ ../images/uiucTestResults/ 9 ../images/visualizeW_RHO_9.PGM
 ```
+
+#### Video stream processing (NEW)
+
+Process a video file with frame-by-frame car detection and annotation:
+
+```bash
+./lda_run ../images/uiucTrain/ input_video.mp4 output_dir/ 9 ../images/visualizeW_RHO_9.PGM
+```
+
+The program automatically detects video input by file extension (.mp4, .avi, .mov, .mkv, .flv, .wmv, .m4v, .webm) and processes it frame-by-frame with the trained LDA template. Output video with bounding box annotations is written to `output_dir/output_video.mp4`.
+
+**Features:**
+- Supports multiple video formats
+- Per-frame template matching with non-maximum suppression
+- Annotated output video with detection bounding boxes
+- Frame-by-frame progress reporting
 
 ### 4. Run tests
 
@@ -85,6 +103,27 @@ ctest --output-on-failure
 - The repository includes a root `CMakeLists.txt` for easy builds.
 - If your environment differs, adjust OpenCV/Boost paths or use CMake cache variables.
 - Local runtime artifacts such as `lda_run` and `file.txt` are ignored via `.gitignore`.
+
+## Hugging Face integration (Option 2)
+
+A Python helper is provided to run a Hugging Face segmentation model and produce a binary mask. It can be used as a modern replacement for the classical segmentation algorithm.
+
+Files:
+- `python/aneurysm_segmentation_hf.py` — runner script that loads a SegFormer model and outputs a mask
+- `python/requirements.txt` — Python dependencies (PyTorch, Transformers, Pillow)
+
+Quick usage (create a venv first):
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r python/requirements.txt
+python python/aneurysm_segmentation_hf.py images/visualizeW_RHO_9.PGM out_mask.png
+```
+
+Notes:
+- Downloading the model requires internet access and may be slow on first run.
+- You can replace the default model with any HF-compatible semantic segmentation model by passing its name as the third argument.
 
 
 

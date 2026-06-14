@@ -93,17 +93,18 @@ def configure_nnunet_environment() -> Path:
     return dataset_dir
 
 
-def checkpoint_for(dataset_dir: Path, configuration: str) -> str:
+def model_artifacts_for(dataset_dir: Path, configuration: str) -> tuple[str, str]:
     trainer_dirs = sorted(dataset_dir.glob(f"*__nnUNetPlans__{configuration}"))
     for trainer_dir in trainer_dirs:
         fold_dir = trainer_dir / "fold_0"
+        trainer_name = trainer_dir.name.split("__", 1)[0]
         if (fold_dir / "checkpoint_final.pth").exists():
-            return "checkpoint_final.pth"
+            return trainer_name, "checkpoint_final.pth"
         if (fold_dir / "checkpoint_best.pth").exists():
-            return "checkpoint_best.pth"
+            return trainer_name, "checkpoint_best.pth"
         if (fold_dir / "checkpoint_latest.pth").exists():
-            return "checkpoint_latest.pth"
-    return "checkpoint_final.pth"
+            return trainer_name, "checkpoint_latest.pth"
+    return "nnUNetTrainer", "checkpoint_final.pth"
 
 
 @app.get("/health")
@@ -164,7 +165,7 @@ def predict():
 
     try:
         dataset_dir = configure_nnunet_environment()
-        checkpoint = checkpoint_for(dataset_dir, configuration)
+        trainer, checkpoint = model_artifacts_for(dataset_dir, configuration)
         request_id = uuid.uuid4().hex[:10]
 
         with tempfile.TemporaryDirectory(prefix="segmend_") as temp_root:
@@ -192,6 +193,8 @@ def predict():
                 "0",
                 "-c",
                 configuration,
+                "-tr",
+                trainer,
                 "-chk",
                 checkpoint,
             ]
@@ -234,6 +237,7 @@ def predict():
                     "success": True,
                     "model": DATASET_NAME,
                     "configuration": configuration,
+                    "trainer": trainer,
                     "checkpoint": checkpoint,
                     "outputFilename": prediction_path.name,
                     "outputDataBase64": base64.b64encode(prediction_path.read_bytes()).decode("ascii"),

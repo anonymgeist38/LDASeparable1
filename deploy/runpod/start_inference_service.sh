@@ -54,7 +54,8 @@ echo "  port:    $PORT"
 echo "  script:  $SERVICE_SCRIPT"
 
 if ! "$PYTHON_BIN" -c "import flask, nnunetv2" >/dev/null 2>&1; then
-  "$PYTHON_BIN" -m pip install --no-cache-dir flask nnunetv2 SimpleITK nibabel scikit-image opencv-python-headless
+  "$PYTHON_BIN" -m pip install --no-cache-dir --ignore-installed \
+    blinker flask nnunetv2 SimpleITK nibabel scikit-image opencv-python-headless
 fi
 
 if pgrep -f "segmend_runpod_service.py|nnunet_microservice.py.*--server" >/dev/null 2>&1; then
